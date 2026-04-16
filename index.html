@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Management Arbitragem</title>
+    <script>
+        // IndexedDB setup for offline storage
+        let db;
+        const request = indexedDB.open('workManagementDB', 1);
+
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            const objectStore = db.createObjectStore('tasks', { keyPath: 'id', autoIncrement: true });
+            objectStore.createIndex('title', 'title', { unique: false });
+            objectStore.createIndex('description', 'description', { unique: false });
+        };
+
+        request.onsuccess = (event) => {
+            db = event.target.result;
+        };
+
+        function addTask(title, description) {
+            const transaction = db.transaction(['tasks'], 'readwrite');
+            const objectStore = transaction.objectStore('tasks');
+            const task = { title, description };
+            objectStore.add(task);
+        }
+    </script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #dashboard { margin-bottom: 20px; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="dashboard">
+        <h1>Dashboard</h1>
+        <button id="openModal">Add Task</button>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody id="taskList">
+            </tbody>
+        </table>
+    </div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add Task</h2>
+            <input type="text" id="taskTitle" placeholder="Task Title"><br>
+            <textarea id="taskDescription" placeholder="Task Description"></textarea><br>
+            <button id="submitTask">Submit</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('openModal').onclick = function() {
+            document.getElementById('myModal').style.display = 'block';
+        };
+
+        document.getElementsByClassName('close')[0].onclick = function() {
+            document.getElementById('myModal').style.display = 'none';
+        };
+
+        document.getElementById('submitTask').onclick = function() {
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            addTask(title, description);
+            document.getElementById('myModal').style.display = 'none';
+            document.getElementById('taskTitle').value = '';
+            document.getElementById('taskDescription').value = '';
+            loadTasks();
+        };
+
+        function loadTasks() {
+            const transaction = db.transaction(['tasks'], 'readonly');
+            const objectStore = transaction.objectStore('tasks');
+            const request = objectStore.getAll();
+
+            request.onsuccess = (event) => {
+                const taskList = document.getElementById('taskList');
+                taskList.innerHTML = '';
+                event.target.result.forEach(task => {
+                    const row = taskList.insertRow();
+                    row.insertCell(0).innerText = task.id;
+                    row.insertCell(1).innerText = task.title;
+                    row.insertCell(2).innerText = task.description;
+                });
+            };
+        }
+
+        window.onload = loadTasks;
+    </script>
+</body>
+</html>
